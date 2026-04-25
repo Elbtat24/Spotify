@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تلفزيون الموسيقى الحرة - Music TV</title>
+    <style>
+        :root { 
+            --accent-color: #ff0000; 
+            --bg-dark: #0f0f0f; 
+            --sidebar-bg: #000000;
+            --card-bg: #1e1e1e;
+            --text-main: #ffffff;
+            --text-dim: #aaaaaa;
+        }
+
+        body {
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            direction: rtl;
+            color: var(--text-main);
+            background: var(--bg-dark);
+            overflow: hidden;
+        }
+
+        /* القائمة الجانبية */
+        .sidebar {
+            width: 380px;
+            background: var(--sidebar-bg);
+            border-left: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            z-index: 10;
+        }
+
+        .search-box {
+            padding: 25px 15px;
+            border-bottom: 1px solid #222;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 20px;
+            border-radius: 30px;
+            border: 1px solid #333;
+            background: #121212;
+            color: white;
+            outline: none;
+            box-sizing: border-box;
+            font-size: 15px;
+            transition: 0.3s;
+        }
+
+        .search-box input:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.2);
+        }
+
+        .list-container {
+            overflow-y: auto;
+            flex: 1;
+            padding: 10px;
+        }
+
+        .list-container::-webkit-scrollbar { width: 5px; }
+        .list-container::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+
+        h3 {
+            color: var(--accent-color);
+            padding: 10px 15px;
+            margin: 0;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* كارت الأغنية */
+        .track-card {
+            padding: 10px;
+            margin: 8px 0;
+            background: var(--card-bg);
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: 0.3s ease;
+            position: relative;
+        }
+
+        .track-card:hover {
+            background: #2a2a2a;
+            transform: translateY(-2px);
+        }
+
+        .track-card.active {
+            border-right: 4px solid var(--accent-color);
+            background: #252525;
+        }
+
+        .track-card img {
+            width: 100px;
+            height: 56px;
+            border-radius: 6px;
+            object-fit: cover;
+            background: #000;
+        }
+
+        .track-info {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .track-info .title {
+            font-size: 13px;
+            font-weight: bold;
+            display: block;
+            line-height: 1.4;
+            max-height: 36px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .track-info .channel {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 4px;
+            display: block;
+        }
+
+        .fav-btn {
+            color: #444;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+            transition: 0.3s;
+        }
+
+        .fav-btn:hover { color: #ff5252; transform: scale(1.2); }
+        .fav-btn.is-fav { color: var(--accent-color); }
+
+        /* منطقة التلفزيون الرئيسي */
+        .main-tv {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: radial-gradient(circle at center, #2c0000 0%, #000 100%);
+        }
+
+        .tv-frame {
+            width: 90%;
+            max-width: 950px;
+            aspect-ratio: 16 / 9;
+            background: #000;
+            border-radius: 20px;
+            box-shadow: 0 0 80px rgba(255, 0, 0, 0.1);
+            overflow: hidden;
+            border: 6px solid #1a1a1a;
+            position: relative;
+        }
+
+        iframe {
+            border: none;
+            width: 100%;
+            height: 100%;
+        }
+
+        .welcome-msg {
+            text-align: center;
+            z-index: 5;
+        }
+
+        .welcome-msg h2 {
+            font-size: 40px;
+            margin-bottom: 10px;
+            background: linear-gradient(to left, #fff, #ff0000);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 10px;
+            color: var(--accent-color);
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        @media (max-width: 900px) {
+            body { flex-direction: column; }
+            .sidebar { width: 100%; height: 40%; border-left: none; border-top: 1px solid #333; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="search-box">
+            <input type="text" id="search-input" placeholder="اكتب اسم الأغنية أو الفنان واضغط Enter...">
+            <div id="loader" class="loader">جاري جلب الموسيقى...</div>
+        </div>
+        
+        <h3>⭐ المفضلة</h3>
+        <div id="fav-list" class="list-container" style="flex: 0; min-height: 120px; max-height: 250px; border-bottom: 2px solid #222;">
+            </div>
+        
+        <h3>🔍 نتائج البحث</h3>
+        <div id="results-list" class="list-container">
+            </div>
+    </div>
+
+    <div class="main-tv">
+        <div class="tv-frame" id="tv-screen">
+            <div class="welcome-msg">
+                <h2>YouTube Music TV</h2>
+                <p style="color: #888;">استمتع بالأغاني كاملة مجاناً وبدون حدود</p>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // الإعدادات والمتغيرات
+    let favorites = JSON.parse(localStorage.getItem('yt_music_favs_v2')) || [];
+    let currentVideoId = null;
+
+    const searchInput = document.getElementById('search-input');
+    const resultsList = document.getElementById('results-list');
+    const favList = document.getElementById('fav-list');
+    const tvScreen = document.getElementById('tv-screen');
+    const loader = document.getElementById('loader');
+
+    // 1. وظيفة البحث (تستخدم Piped API المجاني تماماً)
+    searchInput.addEventListener('keypress', async (e) => {
+        if (e.key === 'Enter') {
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            loader.style.display = "block";
+            resultsList.innerHTML = ""; 
+            
+            try {
+                // نستخدم سيرفر Piped كبديل للـ API الرسمي
+                const response = await fetch(`https://pipedapi.kavin.rocks/search?q=${encodeURIComponent(query)}&filter=music_songs`);
+                const data = await response.json();
+                
+                loader.style.display = "none";
+                
+                if (data.items && data.items.length > 0) {
+                    const musicVideos = data.items.filter(item => item.type === 'stream').slice(0, 20);
+                    renderTracks(musicVideos, resultsList);
+                } else {
+                    resultsList.innerHTML = "<p style='text-align:center; color:#555;'>لم يتم العثور على نتائج.</p>";
+                }
+            } catch (error) {
+                console.error("Search Error: ", error);
+                loader.style.display = "none";
+                resultsList.innerHTML = "<p style='text-align:center; color:#f44336;'>حدث خطأ في الاتصال بالسيرفر. جرب مرة أخرى.</p>";
+            }
+        }
+    });
+
+    // 2. عرض الأغاني في القائمة
+    function renderTracks(items, container) {
+        container.innerHTML = "";
+        items.forEach(item => {
+            // استخراج ID الفيديو من الرابط
+            const videoId = item.url.split('?v=')[1];
+
+            const trackData = {
+                id: videoId,
+                title: item.title,
+                channel: item.uploaderName || "قناة موسيقية",
+                img: item.thumbnail
+            };
+
+            const isFav = favorites.some(f => f.id === trackData.id);
+            const card = document.createElement("div");
+            card.className = `track-card ${currentVideoId === trackData.id ? 'active' : ''}`;
+            card.onclick = () => playMusic(trackData.id);
+            
+            card.innerHTML = `
+                <img src="${trackData.img}" alt="cover">
+                <div class="track-info">
+                    <span class="title">${trackData.title}</span>
+                    <span class="channel">${trackData.channel}</span>
+                </div>
+                <div class="fav-btn ${isFav ? 'is-fav' : ''}" 
+                     onclick="toggleFavorite(event, ${JSON.stringify(trackData).replace(/"/g, '&quot;')})">♥</div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    // 3. تشغيل الموسيقى في التلفزيون
+    function playMusic(id) {
+        currentVideoId = id;
+        
+        // تحديث المظهر النشط
+        document.querySelectorAll('.track-card').forEach(c => c.classList.remove('active'));
+        
+        // استخدام مشغل يوتيوب الرسمي
+        tvScreen.innerHTML = `
+            <iframe src="https://www.youtube.com/embed/${id}?autoplay=1&modestbranding=1&rel=0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen></iframe>`;
+    }
+
+    // 4. نظام المفضلات (LocalStorage)
+    function toggleFavorite(event, data) {
+        event.stopPropagation(); // منع تشغيل الأغنية عند الضغط على القلب
+        const index = favorites.findIndex(f => f.id === data.id);
+        
+        if (index > -1) {
+            favorites.splice(index, 1); // حذف من المفضلة
+        } else {
+            favorites.push(data); // إضافة للمفضلة
+        }
+        
+        localStorage.setItem('yt_music_favs_v2', JSON.stringify(favorites));
+        renderFavorites();
+        
+        // تحديث شكل القلب في القائمة الرئيسية لو كانت موجودة
+        event.target.classList.toggle('is-fav');
+    }
+
+    function renderFavorites() {
+        favList.innerHTML = "";
+        if (favorites.length === 0) {
+            favList.innerHTML = "<p style='text-align:center;color:#444;font-size:12px;margin-top:20px;'>لا توجد أغانٍ مفضلة حالياً</p>";
+            return;
+        }
+        
+        favorites.forEach(track => {
+            const card = document.createElement("div");
+            card.className = "track-card";
+            card.style.background = "#0a0a0a";
+            card.onclick = () => playMusic(track.id);
+            card.innerHTML = `
+                <img src="${track.img}" style="width:70px;height:40px;">
+                <div class="track-info">
+                    <span class="title" style="font-size:11px; white-space:nowrap;">${track.title}</span>
+                </div>
+                <div class="fav-btn is-fav" onclick="toggleFavorite(event, ${JSON.stringify(track).replace(/"/g, '&quot;')})">♥</div>
+            `;
+            favList.appendChild(card);
+        });
+    }
+
+    // تشغيل القوائم عند التحميل
+    renderFavorites();
+
+</script>
+</body>
+</html>
